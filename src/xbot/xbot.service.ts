@@ -229,7 +229,7 @@ export class XbotService {
     await this.xBot.sendChatAction(chatId, 'typing');
     try {
       const userScanned = await this.AccountModel.findOne({
-        username: username,
+        username: username.toLowerCase(),
       });
 
       if (userScanned) {
@@ -267,7 +267,7 @@ export class XbotService {
           { userId: validAccount.data.rest_id }, // Find by userId
           {
             userId: validAccount.data.rest_id, // Ensure userId is always included
-            username: validAccount.data.legacy.screen_name,
+            username: validAccount.data.legacy.screen_name.toLowerCase(),
             followersCount: validAccount.data.legacy.followers_count,
           },
           { upsert: true, new: true }, // Create if not exists, return updated doc
