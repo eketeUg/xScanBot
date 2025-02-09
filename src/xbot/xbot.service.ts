@@ -578,10 +578,32 @@ export class XbotService {
   };
 
   notifyTwitter = async (username, userId, chatId) => {
+    function chunkArray(array: any[], size: number): any[][] {
+      const result = [];
+      for (let i = 0; i < array.length; i += size) {
+        result.push(array.slice(i, i + size));
+      }
+      return result;
+    }
     try {
       await this.xBot.sendChatAction(chatId, 'typing');
       const account = await this.AccountModel.findOne({ userId });
       if (account && account.topFollowers.length > 0) {
+        if (account.topFollowers.length >= 100) {
+          const chunkedFollowers = chunkArray(account.topFollowers, 100);
+
+          for (const chunk of chunkedFollowers) {
+            const markUp = await followersMarkUp(chunk);
+            const replyMarkup = {
+              inline_keyboard: markUp.keyboard,
+            };
+            await this.xBot.sendMessage(chatId, markUp.message, {
+              reply_markup: replyMarkup,
+              parse_mode: 'HTML',
+            });
+          }
+          return;
+        }
         const markUp = await followersMarkUp(account.topFollowers);
         const replyMarkup = {
           inline_keyboard: markUp.keyboard,
