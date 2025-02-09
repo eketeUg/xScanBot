@@ -52,7 +52,12 @@ export class XbotService {
       if (msg.text.trim() === '/start') {
         const username: string = `${msg.from.username}`;
         const welcome = await welcomeMessageMarkup(username);
-        return await this.xBot.sendMessage(msg.chat.id, welcome.message);
+        const replyMarkup = {
+          inline_keyboard: welcome.keyboard,
+        };
+        return await this.xBot.sendMessage(msg.chat.id, welcome.message, {
+          reply_markup: replyMarkup,
+        });
       } else if (addMatch) {
         if (addMatch.platform === 'twitter') {
           //TODO: VERIFY USERNAME BEFORE SAVING
