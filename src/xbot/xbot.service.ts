@@ -60,6 +60,7 @@ export class XbotService {
         });
       } else if (addMatch) {
         if (addMatch.platform === 'twitter') {
+          console.log(addMatch.username);
           //TODO: VERIFY USERNAME BEFORE SAVING
           const validAccount: any = await this.validateTwitterAccount(
             addMatch.username,
@@ -69,25 +70,42 @@ export class XbotService {
             validAccount.username &&
             Number(validAccount.followersCount) > 0
           ) {
-            console.log(validAccount);
             if (Number(validAccount.followersCount) > 450000) {
               return await this.xBot.sendMessage(
                 msg.chat.id,
                 `Account @${validAccount.username} has ${validAccount.followersCount} and it is above the iteration threshold`,
               );
+            } else if (
+              validAccount.topFollowers &&
+              validAccount.topFollowers.length > 0
+            ) {
+              await this.notifyTwitter(
+                validAccount.username,
+                validAccount.userId,
+                msg.chat.id,
+              );
+              return;
             } else if (Number(validAccount.followersCount) >= 200) {
               await this.fetchTwitterPaginatedDataAbove200(
                 validAccount.userId,
                 msg.chat.id,
               );
-              await this.notifyTwitter(validAccount.username, msg.chat.id);
+              await this.notifyTwitter(
+                validAccount.username,
+                validAccount.userId,
+                msg.chat.id,
+              );
               return;
             }
             await this.fetchTwitterPaginatedData(
               validAccount.userId,
               msg.chat.id,
             );
-            await this.notifyTwitter(validAccount.username, msg.chat.id);
+            await this.notifyTwitter(
+              validAccount.username,
+              validAccount.userId,
+              msg.chat.id,
+            );
             return;
           }
           return;
@@ -210,13 +228,16 @@ export class XbotService {
   validateTwitterAccount = async (username: string, chatId: number) => {
     await this.xBot.sendChatAction(chatId, 'typing');
     try {
-      const userScanned = await this.AccountModel.findOne({ username });
+      const userScanned = await this.AccountModel.findOne({
+        username: username,
+      });
 
       if (userScanned) {
         return {
           username: userScanned.username,
           userId: userScanned.userId,
           followersCount: userScanned.followersCount,
+          topFollowers: userScanned.topFollowers,
         };
       }
       // Fetch the valid Twitter account information
@@ -234,13 +255,23 @@ export class XbotService {
       // If valid account data is returned
       if (validAccount.data.legacy.name) {
         // Prepare to save new account data
-        const saveTwitterUsername = new this.AccountModel({
-          username: validAccount.data.legacy.screen_name,
-          userId: validAccount.data.rest_id,
-          followersCount: validAccount.data.legacy.followers_count,
-        });
-        // Use save method with error handling to prevent duplicates
-        await saveTwitterUsername.save();
+        // const saveTwitterUsername = new this.AccountModel({
+        //   username: validAccount.data.legacy.screen_name,
+        //   userId: validAccount.data.rest_id,
+        //   followersCount: validAccount.data.legacy.followers_count,
+        // });
+        // // Use save method with error handling to prevent duplicates
+        // await saveTwitterUsername.save();
+
+        const saveTwitterUsername = await this.AccountModel.findOneAndUpdate(
+          { userId: validAccount.data.rest_id }, // Find by userId
+          {
+            userId: validAccount.data.rest_id, // Ensure userId is always included
+            username: validAccount.data.legacy.screen_name,
+            followersCount: validAccount.data.legacy.followers_count,
+          },
+          { upsert: true, new: true }, // Create if not exists, return updated doc
+        );
 
         // Only fetch paginated data if save is successful
         // await this.fetchTwitterPaginatedData(username);
@@ -405,7 +436,11 @@ export class XbotService {
 
         await this.AccountModel.updateOne(
           { userId: userId },
-          { $push: { topFollowers: { $each: formattedUsers } } },
+          {
+            $addToSet: {
+              topFollowers: { $each: formattedUsers }, // Prevents duplicates
+            },
+          },
           { upsert: true },
         );
 
@@ -466,7 +501,11 @@ export class XbotService {
 
         await this.AccountModel.updateOne(
           { userId: userId },
-          { $push: { topFollowers: { $each: formattedUsers } } },
+          {
+            $addToSet: {
+              topFollowers: { $each: formattedUsers }, // Prevents duplicates
+            },
+          },
           { upsert: true },
         );
 
@@ -488,10 +527,10 @@ export class XbotService {
     }
   };
 
-  notifyTwitter = async (username, chatId) => {
+  notifyTwitter = async (username, userId, chatId) => {
     try {
       await this.xBot.sendChatAction(chatId, 'typing');
-      const account = await this.AccountModel.findOne({ username });
+      const account = await this.AccountModel.findOne({ userId });
       if (account && account.topFollowers.length > 0) {
         const markUp = await followersMarkUp(account.topFollowers);
         const replyMarkup = {
