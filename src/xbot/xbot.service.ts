@@ -451,6 +451,7 @@ export class XbotService {
         );
 
         const { users, next_cursor_str } = response.data;
+        console.log(response.data);
         const formattedUsers = users
           .filter((user) => Number(user.followers_count) >= 90000)
           .map((user) => ({
@@ -484,6 +485,7 @@ export class XbotService {
 
   notifyTwitter = async (username, chatId) => {
     try {
+      await this.xBot.sendChatAction(chatId, 'typing');
       const account = await this.AccountModel.findOne({ username });
       if (account && account.topFollowers.length > 0) {
         const markUp = await followersMarkUp(account.topFollowers);
@@ -495,6 +497,11 @@ export class XbotService {
           parse_mode: 'HTML',
         });
       }
+      return await this.xBot.sendMessage(
+        chatId,
+        `<a href="https://x.com/${username}">@${username}</a> - has no user with 90k and above followers`,
+        { parse_mode: 'HTML' },
+      );
     } catch (error) {
       console.error('Error sending notifications:', error);
     }

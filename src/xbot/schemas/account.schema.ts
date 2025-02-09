@@ -15,7 +15,7 @@ export class Account {
   userId: string;
 
   @Prop({ required: false })
-  topFollowers: string[];
+  topFollowers: any[];
 }
 
 export const AccountSchema = SchemaFactory.createForClass(Account);
