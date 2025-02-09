@@ -243,6 +243,7 @@ export class XbotService {
         await this.xBot.sendMessage(
           chatId,
           `SCanning Account <a href="https://x.com/${username}">@${username}</a>\n\n followers :${userScanned.followersCount}\nplease wait.........`,
+          { parse_mode: 'HTML' },
         );
         return {
           username: userScanned.username,
@@ -290,6 +291,7 @@ export class XbotService {
         await this.xBot.sendMessage(
           chatId,
           `SCanning Account <a href="https://x.com/${username}">@${username}</a>\n\n followers :${saveTwitterUsername.followersCount}\nplease wait.........`,
+          { parse_mode: 'HTML' },
         );
         return {
           username: saveTwitterUsername.username,
