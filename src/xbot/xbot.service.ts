@@ -89,6 +89,7 @@ export class XbotService {
               await this.fetchTwitterPaginatedDataAbove200(
                 validAccount.userId,
                 msg.chat.id,
+                validAccount.followersCount,
               );
               await this.notifyTwitter(
                 validAccount.username,
@@ -100,6 +101,7 @@ export class XbotService {
             await this.fetchTwitterPaginatedData(
               validAccount.userId,
               msg.chat.id,
+              validAccount.followersCount,
             );
             await this.notifyTwitter(
               validAccount.username,
@@ -233,6 +235,15 @@ export class XbotService {
       });
 
       if (userScanned) {
+        // const timeToScan =
+        //   Number(userScanned.followersCount) >= 200
+        //     ? Number(userScanned.followersCount) / 200
+        //     : Number(userScanned.followersCount) / 70;
+
+        await this.xBot.sendMessage(
+          chatId,
+          `SCanning Account <a href="https://x.com/${username}">@${username}</a>\n\n followers :${userScanned.followersCount}\nplease wait.........`,
+        );
         return {
           username: userScanned.username,
           userId: userScanned.userId,
@@ -275,6 +286,11 @@ export class XbotService {
 
         // Only fetch paginated data if save is successful
         // await this.fetchTwitterPaginatedData(username);
+
+        await this.xBot.sendMessage(
+          chatId,
+          `SCanning Account <a href="https://x.com/${username}">@${username}</a>\n\n followers :${saveTwitterUsername.followersCount}\nplease wait.........`,
+        );
         return {
           username: saveTwitterUsername.username,
           userId: saveTwitterUsername.userId,
@@ -399,11 +415,13 @@ export class XbotService {
   fetchTwitterPaginatedDataAbove200 = async (
     userId: string,
     chatId,
+    followers_count,
   ): Promise<void> => {
     let nextCursor: string | null = null;
     const maxRequestsPerMinute = 60;
     const delayBetweenRequests = 1000; // 1 second per request
     let requestCount = 0;
+    let scannedUser = 0;
 
     try {
       do {
@@ -427,6 +445,7 @@ export class XbotService {
         );
 
         const { users, next_cursor_str } = response.data;
+
         const formattedUsers = users
           .filter((user) => Number(user.followers_count) >= 90000)
           .map((user) => ({
@@ -434,6 +453,7 @@ export class XbotService {
             username: user.screen_name,
           }));
 
+        scannedUser += users.length;
         await this.AccountModel.updateOne(
           { userId: userId },
           {
@@ -442,6 +462,10 @@ export class XbotService {
             },
           },
           { upsert: true },
+        );
+        await this.xBot.sendMessage(
+          chatId,
+          `Scanned ${scannedUser} followers remaining ${Number(followers_count) - scannedUser}`,
         );
 
         nextCursor = next_cursor_str !== '0' ? next_cursor_str : null;
@@ -455,18 +479,27 @@ export class XbotService {
       if (error.response?.status === 429) {
         console.warn('Rate limited! Retrying in 60 seconds...');
         await new Promise((resolve) => setTimeout(resolve, 60000));
-        return this.fetchTwitterPaginatedDataAbove200(userId, chatId); // Retry after delay
+        return this.fetchTwitterPaginatedDataAbove200(
+          userId,
+          chatId,
+          followers_count,
+        ); // Retry after delay
       } else {
         console.error('Error fetching data:', error.message);
       }
     }
   };
 
-  fetchTwitterPaginatedData = async (userId: string, chatId): Promise<void> => {
+  fetchTwitterPaginatedData = async (
+    userId: string,
+    chatId,
+    followers_count,
+  ): Promise<void> => {
     let nextCursor: string | null = null;
     const maxRequestsPerMinute = 60;
     const delayBetweenRequests = 1000; // 1 second per request
     let requestCount = 0;
+    let scannedUser = 0;
 
     try {
       console.log('hereeeeeee');
@@ -491,7 +524,7 @@ export class XbotService {
         );
 
         const { users, next_cursor_str } = response.data;
-        console.log(response.data);
+        scannedUser += users.length;
         const formattedUsers = users
           .filter((user) => Number(user.followers_count) >= 90000)
           .map((user) => ({
@@ -509,6 +542,11 @@ export class XbotService {
           { upsert: true },
         );
 
+        await this.xBot.sendMessage(
+          chatId,
+          `Scanned ${scannedUser} followers remaining ${Number(followers_count) - scannedUser}`,
+        );
+
         nextCursor = next_cursor_str !== '0' ? next_cursor_str : null;
         requestCount++;
 
@@ -520,7 +558,7 @@ export class XbotService {
       if (error.response?.status === 429) {
         console.warn('Rate limited! Retrying in 60 seconds...');
         await new Promise((resolve) => setTimeout(resolve, 60000));
-        return this.fetchTwitterPaginatedData(userId, chatId); // Retry after delay
+        return this.fetchTwitterPaginatedData(userId, chatId, followers_count); // Retry after delay
       } else {
         console.error('Error fetching data:', error.message);
       }
