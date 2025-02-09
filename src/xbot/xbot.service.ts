@@ -424,6 +424,7 @@ export class XbotService {
     const delayBetweenRequests = 1000; // 1 second per request
     let requestCount = 0;
     let scannedUser = 0;
+    let lastMessageId: number | null = null; // Store previous message ID
 
     try {
       do {
@@ -465,10 +466,14 @@ export class XbotService {
           },
           { upsert: true },
         );
-        await this.xBot.sendMessage(
+        const sentMessage = await this.xBot.sendMessage(
           chatId,
           `Scanned ${scannedUser} followers remaining ${Number(followers_count) - scannedUser}`,
         );
+        if (lastMessageId) {
+          await this.xBot.deleteMessage(chatId, lastMessageId).catch(() => {});
+        }
+        lastMessageId = sentMessage.message_id; // Update message ID
 
         nextCursor = next_cursor_str !== '0' ? next_cursor_str : null;
         requestCount++;
@@ -502,6 +507,7 @@ export class XbotService {
     const delayBetweenRequests = 1000; // 1 second per request
     let requestCount = 0;
     let scannedUser = 0;
+    let lastMessageId: number | null = null; // Store previous message ID
 
     try {
       console.log('hereeeeeee');
@@ -544,10 +550,14 @@ export class XbotService {
           { upsert: true },
         );
 
-        await this.xBot.sendMessage(
+        const sentMessage = await this.xBot.sendMessage(
           chatId,
           `Scanned ${scannedUser} followers remaining ${Number(followers_count) - scannedUser}`,
         );
+        if (lastMessageId) {
+          await this.xBot.deleteMessage(chatId, lastMessageId).catch(() => {});
+        }
+        lastMessageId = sentMessage.message_id; // Update message ID
 
         nextCursor = next_cursor_str !== '0' ? next_cursor_str : null;
         requestCount++;
