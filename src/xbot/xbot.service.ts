@@ -427,6 +427,7 @@ export class XbotService {
     let lastMessageId: number | null = null; // Store previous message ID
 
     try {
+      console.log(userId);
       do {
         await this.xBot.sendChatAction(chatId, 'typing');
         if (requestCount >= maxRequestsPerMinute) {
@@ -510,7 +511,7 @@ export class XbotService {
     let lastMessageId: number | null = null; // Store previous message ID
 
     try {
-      console.log('hereeeeeee');
+      console.log(userId);
       do {
         await this.xBot.sendChatAction(chatId, 'typing');
         if (requestCount >= maxRequestsPerMinute) {
@@ -518,11 +519,11 @@ export class XbotService {
           await new Promise((resolve) => setTimeout(resolve, 60000));
           requestCount = 0; // Reset request count
         }
-
+        //twitter-api47.p.rapidapi.com/v2/user/followers?userId=1620202841313779713
         const response = await this.httpService.axiosRef.get(
           `https://twitter-api47.p.rapidapi.com/v2/user/followers-list`,
           {
-            params: { userId },
+            params: { userId, count: 200 },
             headers: {
               'Content-Type': 'application/json',
               'x-rapidapi-key': process.env.RAPID_API_KEY,
